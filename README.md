@@ -1,0 +1,5 @@
+# Swiss Code
+
+In my day job I've recently been working on visualizing time series data with `matplotlib`. When I've wanted some sort of specific formatting or behavior, I've had to wade deep in the library documentation to figure out the code for the things I want to do. That's fine, but what frustrates me is that in the back of my mind, I'm pretty sure these are all things I've actually done before. A few years ago in graduate school I took a course that was heavy on `matplotlib` plotting, and I spent many hours figuring out bizarre techniques for getting very specific results. Unfortunately I've forgotten almost all of that library-specific minutiae.  
+
+This has led me to a new project -- I'm creating a personal data science utilities library with modules for `matplotlib`/`seaborn`, `pandas`, `geopandas`, and `scikit-learn`, each containing functions that do all the random things I've repeatedly built custom code solutions for in the past. The hope is that I don't need to keep re-learning the same things and can call simple wrapper functions that I've written.
