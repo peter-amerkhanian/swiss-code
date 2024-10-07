@@ -5,10 +5,24 @@ import matplotlib as mpl
 import matplotlib.colors as colors
 from shapely.geometry import Polygon
 import os
+from typing import Tuple
 import numpy as np
+
 os.environ['USE_PYGEOS'] = '0'
 
-def get_bounds(gdf):
+def get_bounds(gdf: gpd.GeoDataFrame) -> Tuple[Tuple[float, float], Tuple[float, float]]:
+    """
+    Get the bounding box of a GeoDataFrame.
+
+    Args:
+        gdf (gpd.GeoDataFrame): The input GeoDataFrame.
+
+    Returns:
+        Tuple[Tuple[float, float], Tuple[float, float]]:
+            A tuple containing two tuples:
+            - The first tuple represents the min and max x-values (longitude).
+            - The second tuple represents the min and max y-values (latitude).
+    """
     miny = gdf.geometry.bounds.min()['miny']
     minx = gdf.geometry.bounds.min()['minx']
     maxy = gdf.geometry.bounds.max()['maxy']
@@ -17,8 +31,20 @@ def get_bounds(gdf):
 
 def build_geohist(gdf: gpd.GeoDataFrame,
                   bins: int,
-                  mask: int=0,
-                  name: str="value") -> gpd.GeoDataFrame:
+                  mask: int = 0,
+                  name: str = "value") -> gpd.GeoDataFrame:
+    """
+    Build a 2D histogram and represent it as a GeoDataFrame with polygonal bins.
+
+    Args:
+        gdf (gpd.GeoDataFrame): The input GeoDataFrame with point geometries.
+        bins (int): The number of bins for the 2D histogram in both x and y directions.
+        mask (int, optional): The value to mask in the histogram. Defaults to 0.
+        name (str, optional): The name of the column to store the histogram values. Defaults to "value".
+
+    Returns:
+        gpd.GeoDataFrame: A new GeoDataFrame containing polygon geometries (bins) and the corresponding values.
+    """
     x = gdf.geometry.x
     y = gdf.geometry.y
     H, xedges, yedges = np.histogram2d(x, y, bins=bins)
@@ -40,7 +66,21 @@ def build_geohist(gdf: gpd.GeoDataFrame,
     gdf_hist = gpd.GeoDataFrame({'geometry': polygons, name: values})
     return gdf_hist
 
-def zoom_district(ax, district,  gdf, column, zoom=1):
+def zoom_district(ax: mpl.axes.Axes,
+                  district: str,
+                  gdf: gpd.GeoDataFrame,
+                  column: str,
+                  zoom: float = 1) -> None:
+    """
+    Adjust the plot's x and y limits to zoom into a specific district.
+
+    Args:
+        ax (mpl.axes.Axes): The matplotlib axis to apply the zoom.
+        district (str): The name or value of the district to zoom into.
+        gdf (gpd.GeoDataFrame): The GeoDataFrame containing the geometry data.
+        column (str): The column in the GeoDataFrame that contains district identifiers.
+        zoom (float, optional): The zoom factor to apply. Defaults to 1.
+    """
     gdf_subset = gdf[gdf[column] == district]
     miny = gdf_subset.geometry.bounds.min()['miny'] - .01 * zoom
     minx = gdf_subset.geometry.bounds.min()['minx'] - .01 * zoom
@@ -48,8 +88,13 @@ def zoom_district(ax, district,  gdf, column, zoom=1):
     maxx = gdf_subset.geometry.bounds.max()['maxx'] + .01 * zoom
     ax.set(xlim = (minx, maxx), ylim = (miny, maxy))
 
+def clean_map(ax: mpl.axes.Axes) -> None:
+    """
+    Clean a matplotlib map by removing ticks, labels, and spines.
 
-def clean_map(ax):
+    Args:
+        ax (mpl.axes.Axes): The matplotlib axis to clean.
+    """
     ax.tick_params(axis='both', which='both', bottom=False,
                    left=False, labelbottom=False, labelleft=False)
     ax.spines['top'].set_visible(False)
@@ -57,7 +102,23 @@ def clean_map(ax):
     ax.spines['left'].set_visible(False)
     ax.spines['bottom'].set_visible(False)
 
-def label_polygon(ax, label, row, idx, iter_df, textsize=10):
+def label_polygon(ax: mpl.axes.Axes,
+                  label: str,
+                  row: gpd.GeoSeries,
+                  idx: int,
+                  iter_df: gpd.GeoDataFrame,
+                  textsize: int = 10) -> None:
+    """
+    Label the centroid of a polygon or multi-polygon geometry on a map.
+
+    Args:
+        ax (mpl.axes.Axes): The matplotlib axis on which to place the label.
+        label (str): The text to place at the centroid of the polygon.
+        row (gpd.GeoSeries): The row containing the polygon geometry.
+        idx (int): The index of the row in the iterating DataFrame.
+        iter_df (gpd.GeoDataFrame): The GeoDataFrame being iterated over.
+        textsize (int, optional): The font size of the label. Defaults to 10.
+    """
     if row.geometry.geom_type == 'MultiPolygon':
         for polygon in iter_df['geometry'][idx].geoms:
             ax.annotate(text=label,

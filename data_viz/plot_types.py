@@ -13,6 +13,25 @@ def grid_plot(grid_subset: pd.DataFrame,
               figsize: tuple = (10, 5),
               legend_loc: str = "lower",
               **kwargs):
+    """
+    Creates a grid of subplots for different groups in the dataset and applies a given Seaborn plotting function to each group.
+
+    Args:
+        grid_subset (pd.DataFrame): The input DataFrame containing the data to be plotted.
+        seaborn_func (callable): The Seaborn function to be applied (e.g., sns.lineplot, sns.barplot).
+        rows (int): The number of rows in the grid of subplots.
+        cols (int): The number of columns in the grid of subplots.
+        group_var (str): The name of the column in the DataFrame that holds the grouping variable.
+        figsize (tuple, optional): The size of the figure as a tuple (width, height). Defaults to (10, 5).
+        legend_loc (str, optional): Location of the legend. It can be 'lower', 'upper', or any other position. Defaults to "lower".
+        **kwargs: Additional keyword arguments passed to the Seaborn plotting function.
+
+    Returns:
+        Tuple[plt.Figure, np.ndarray]: A tuple containing the created Matplotlib figure and axes array.
+
+    Example:
+        grid_plot(df, sns.lineplot, rows=2, cols=3, group_var='category', figsize=(12, 8), legend_loc='upper')
+    """
     facet = grid_subset[group_var].unique()
     facet = facet.reshape(rows, cols)
     fig, axes = plt.subplots(

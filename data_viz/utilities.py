@@ -4,11 +4,11 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib
 import matplotlib.ticker as ticker
-plt.style.use('default')
 from datetime import datetime
 from typing import Tuple, Union
 from collections.abc import Iterable
 
+plt.style.use('default')
 
 def custom_legend(ax: matplotlib.axes.Axes,
                   outside_loc: str = None,
