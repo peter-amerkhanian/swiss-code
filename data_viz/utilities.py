@@ -143,3 +143,23 @@ def comma_formatter() -> ticker.FuncFormatter:
         return '{:,}'.format(int(x))
 
     return ticker.FuncFormatter(comma)
+
+def dollar_formatter(x: float, pos) -> str:
+    """
+    Helper Function for Matplotlib number formatting
+    """
+    return f"${x:,.0f}"
+
+
+# def comma_formatter(x: float, pos) -> str:
+#     """
+#     Helper Function for Matplotlib number formatting
+#     """
+#     return f"{x:,.0f}"
+
+
+def percent_formatter(x: float, pos) -> str:
+    """
+    Helper Function for Matplotlib number formatting
+    """
+    return f"{x*100:.1f}%"
