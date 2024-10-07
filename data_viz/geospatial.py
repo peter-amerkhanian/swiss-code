@@ -29,7 +29,7 @@ def get_bounds(gdf: gpd.GeoDataFrame) -> Tuple[Tuple[float, float], Tuple[float,
     maxx = gdf.geometry.bounds.max()['maxx']
     return (minx, maxx), (miny, maxy)
 
-def build_geohist(gdf: gpd.GeoDataFrame,
+def build_choropleth(gdf: gpd.GeoDataFrame,
                   bins: int,
                   mask: int = 0,
                   name: str = "value") -> gpd.GeoDataFrame:
