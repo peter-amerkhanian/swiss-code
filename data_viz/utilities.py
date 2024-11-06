@@ -1,14 +1,13 @@
+from typing import Union
+from collections.abc import Iterable
 import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib
-import matplotlib.ticker as ticker
-from datetime import datetime
-from typing import Tuple, Union
-from collections.abc import Iterable
-
+from matplotlib import ticker
 plt.style.use('default')
+
 
 def custom_legend(ax: matplotlib.axes.Axes,
                   outside_loc: str = None,
@@ -47,7 +46,14 @@ def custom_legend(ax: matplotlib.axes.Axes,
         handles = handles[::-1]
         labels = labels[::-1]
     elif order == 'desc':
-        ordering = np.flip(np.argsort(np.array([line.get_ydata()[-1] for line in ax.lines if (len(line.get_ydata())>0 and line.get_label() in labels)])))
+        ordering = np.flip(
+            np.argsort(np.array(
+                [line.get_ydata()[-1]
+                 for line in ax.lines
+                 if (len(line.get_ydata()) > 0 and line.get_label() in labels)
+                 ])
+            )
+        )
         handles = np.array(handles)[ordering].tolist()
         labels = np.array(labels)[ordering].tolist()
     elif isinstance(order, Iterable):
@@ -56,15 +62,18 @@ def custom_legend(ax: matplotlib.axes.Axes,
         labels = list(order)
         handles = np.array(handles)[indices].tolist()
     else:
-        raise Exception("Invalid Order")
+        raise ValueError("Invalid Order")
     error_msg = "legend_to_right loc must be None or in 'lower', 'center', or 'upper'"
     assert outside_loc in ["lower", "center", "upper", None], error_msg
     if outside_loc == "lower":
-        ax.legend(handles, labels, loc='lower left', bbox_to_anchor=(1, 0), **kwargs)
+        ax.legend(handles, labels, loc='lower left',
+                  bbox_to_anchor=(1, 0), **kwargs)
     elif outside_loc == "center":
-        ax.legend(handles, labels, loc='center left', bbox_to_anchor=(1, .5), **kwargs)
+        ax.legend(handles, labels, loc='center left',
+                  bbox_to_anchor=(1, .5), **kwargs)
     elif outside_loc == "upper":
-        ax.legend(handles, labels, loc='upper left', bbox_to_anchor=(1, 1), **kwargs)
+        ax.legend(handles, labels, loc='upper left',
+                  bbox_to_anchor=(1, 1), **kwargs)
     else:
         ax.legend(handles, labels, **kwargs)
     legend = ax.get_legend()
@@ -108,13 +117,11 @@ def build_colormap(series: pd.Series) -> dict:
     return colormap
 
 
-
 def show_all_xticks(ax: matplotlib.axes.Axes, labs: pd.Index) -> matplotlib.axes.Axes:
     """
     Sets all x-ticks on a Matplotlib axis object and labels them with the provided list of labels.
-
-    This function ensures that all x-ticks are displayed and labeled as specified, making it easier to read and interpret the x-axis of the plot. The labels are displayed horizontally.
-
+    This function ensures that all x-ticks are displayed and labeled as specified,
+    making it easier to read and interpret the x-axis of the plot. The labels are displayed horizontally.
     Parameters:
     ax (matplotlib.axes.Axes): The axis object on which to set the x-ticks and labels.
     labs (list of str): A list of labels to set on the x-axis. The number of labels should correspond to the number of ticks.
@@ -125,6 +132,7 @@ def show_all_xticks(ax: matplotlib.axes.Axes, labs: pd.Index) -> matplotlib.axes
     ax.set_xticks(range(len(labs)))
     ax.set_xticklabels(labs, rotation=0)
     return ax
+
 
 def comma_formatter() -> ticker.FuncFormatter:
     """
@@ -143,6 +151,7 @@ def comma_formatter() -> ticker.FuncFormatter:
         return '{:,}'.format(int(x))
 
     return ticker.FuncFormatter(comma)
+
 
 def dollar_formatter(x: float, pos) -> str:
     """
