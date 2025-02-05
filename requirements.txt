@@ -54,7 +54,6 @@ seaborn==0.13.2
 shapely==2.0.7
 six==1.17.0
 stack-data==0.6.3
--e git+https://github.com/peter-amerkhanian/swiss-code.git@a11729c57467107f42ad7fde96af12f7aeff2e9d#egg=swiss_code
 tornado==6.4.2
 traitlets==5.14.3
 tzdata==2025.1
