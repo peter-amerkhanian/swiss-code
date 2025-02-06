@@ -1,6 +1,6 @@
 [project]
 name = "swiss-code"
-version = "0.1.0"
+version = "0.1.1"
 description = "Python data science utilities"
 authors = [
     {name = "Peter Amerkhanian",email = "peteamer@gmail.com"}
