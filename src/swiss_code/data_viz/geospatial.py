@@ -16,8 +16,7 @@ os.environ["USE_PYGEOS"] = "0"
 def gdf_from_longlat(
     df: pd.DataFrame,
     longitude: str = "Longitude",
-    latitude: str = "Latitude",
-    epsg: int = 4326,
+    latitude: str = "Latitude"
 ):
     """
     Converts a Pandas DataFrame with longitude and latitude columns into a GeoPandas GeoDataFrame.
@@ -30,9 +29,6 @@ def gdf_from_longlat(
         The name of the column in `df` that contains longitude values.
     latitude : str, optional (default="Latitude")
         The name of the column in `df` that contains latitude values.
-    epsg : int, optional (default=4326)
-        The EPSG code for the coordinate reference system (CRS). Defaults to WGS84 (EPSG:4326).
-
     Returns:
     --------
     gpd.GeoDataFrame
@@ -42,7 +38,6 @@ def gdf_from_longlat(
     ------
     - This function assumes that the input DataFrame contains valid longitude and latitude values.
     - The resulting GeoDataFrame retains all original columns from `df` and adds a `geometry` column.
-    - The CRS is set using `gdf.set_crs(epsg=epsg, inplace=True)`, which requires a recent version of GeoPandas.
 
     Example:
     --------
@@ -57,8 +52,6 @@ def gdf_from_longlat(
     # Create a GeoDataFrame
     geometry = [Point(xy) for xy in zip(df[longitude], df[latitude])]
     gdf = gpd.GeoDataFrame(df, geometry=geometry)
-    # Set the CRS (Coordinate Reference System) to WGS84 (EPSG:4326)
-    gdf.set_crs(inplace=True)
     return gdf
     
 
@@ -175,35 +168,59 @@ def label_polygon(
     ax: mpl.axes.Axes,
     label: str,
     row: gpd.GeoSeries,
-    idx: int,
-    iter_df: gpd.GeoDataFrame,
-    textsize: int = 10,
+    size:int = 10,
+    horizontalalignment:str = "center",
+    verticalalignment:str = "center",
+    **annotate_kws,
 ) -> None:
     """
-    Label the centroid of a polygon or multi-polygon geometry on a map.
+    Labels the centroid of a polygon or multi-polygon geometry on a map.
 
     Args:
         ax (mpl.axes.Axes): The matplotlib axis on which to place the label.
         label (str): The text to place at the centroid of the polygon.
-        row (gpd.GeoSeries): The row containing the polygon geometry.
-        idx (int): The index of the row in the iterating DataFrame.
-        iter_df (gpd.GeoDataFrame): The GeoDataFrame being iterated over.
-        textsize (int, optional): The font size of the label. Defaults to 10.
+        row (gpd.GeoSeries): A GeoSeries containing the polygon geometry.
+        size (int, optional): The font size of the label. Defaults to 10.
+        horizontalalignment (str, optional): Horizontal alignment of the label text. Defaults to "center".
+        verticalalignment (str, optional): Vertical alignment of the label text. Defaults to "center".
+        **annotate_kws: Additional keyword arguments passed to `ax.annotate()`.
+
+    Returns:
+        None
     """
     if row.geometry.geom_type == "MultiPolygon":
-        for polygon in iter_df["geometry"][idx].geoms:
+        for polygon in row["geometry"].geoms:
             ax.annotate(
                 text=label,
-                size=textsize,
                 xy=(polygon.centroid.x, polygon.centroid.y),
-                horizontalalignment="center",
-                verticalalignment="center",
+                horizontalalignment=horizontalalignment,
+                verticalalignment=verticalalignment,
+                size=size,
+                **annotate_kws
             )
     else:
         ax.annotate(
             text=label,
-            size=textsize,
             xy=(row.geometry.centroid.x, row.geometry.centroid.y),
-            horizontalalignment="center",
-            verticalalignment="center",
+            horizontalalignment=horizontalalignment,
+            verticalalignment=verticalalignment,
+            size=size,
+            **annotate_kws
         )
+
+def label_gdf_polygons(gdf, label_col, ax, **label_kws):
+    """
+    Labels all polygons in a GeoDataFrame using a specified column for text.
+
+    Args:
+        gdf (gpd.GeoDataFrame): The GeoDataFrame containing polygon geometries.
+        label_col (str): The column name in `gdf` containing labels for the polygons.
+        ax (mpl.axes.Axes): The matplotlib axis on which to place the labels.
+        **label_kws: Additional keyword arguments passed to `label_polygon()`.
+
+    Returns:
+        None
+    """
+    for _, row in gdf.iterrows():
+        label_polygon(ax, row[label_col], row, **label_kws)
+
