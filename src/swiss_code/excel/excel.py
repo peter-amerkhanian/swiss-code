@@ -5,6 +5,31 @@ import pandas as pd
 import numpy as np
 
 
+
+def get_or_create_workbook(filename="output.xlsx",
+                           display_alerts: bool = False,
+                           screen_updating: bool= False):
+    """
+    Checks if the specified Excel file exists. If it does, opens it; 
+    otherwise, creates a new one. Returns the workbook object.
+
+    Args:
+        filename (str): The name of the Excel file. Default is "output.xlsx".
+
+    Returns:
+        xlwings.Book: The opened or newly created workbook.
+    """
+    if os.path.exists(filename):
+        wb = xw.Book(filename)
+        wb.app.display_alerts = display_alerts
+        wb.app.screen_updating = screen_updating
+    else:
+        wb = xw.Book()
+        wb.app.display_alerts = display_alerts
+        wb.app.screen_updating = screen_updating
+        wb.save(filename)
+    return wb
+
 def write_df_to_excel(df: pd.DataFrame,
                       sheet: xw.Sheet,
                       cell_start: str="A1",
@@ -92,32 +117,6 @@ def format_percentage_column(sheet, header_name, format, row="A"):
     
     # Apply percentage format with three-digit display (e.g., 100%, 045%, 008%)
     sheet.range(f"{col_letter}2:{col_letter}1048576").number_format = format
-
-
-
-def get_or_create_workbook(filename="output.xlsx",
-                           display_alerts: bool = False,
-                           screen_updating: bool= False):
-    """
-    Checks if the specified Excel file exists. If it does, opens it; 
-    otherwise, creates a new one. Returns the workbook object.
-
-    Args:
-        filename (str): The name of the Excel file. Default is "output.xlsx".
-
-    Returns:
-        xlwings.Book: The opened or newly created workbook.
-    """
-    if os.path.exists(filename):
-        wb = xw.Book(filename)
-        wb.app.display_alerts = display_alerts
-        wb.app.screen_updating = screen_updating
-    else:
-        wb = xw.Book()
-        wb.app.display_alerts = display_alerts
-        wb.app.screen_updating = screen_updating
-        wb.save(filename)
-    return wb
 
 def select_sheet(name, wb):
     try:
