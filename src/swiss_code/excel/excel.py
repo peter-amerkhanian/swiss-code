@@ -192,3 +192,22 @@ def merge_column(sheet, col=1):
         sheet.range((merge_start, col), (last_row, col)).api.Merge()
 
 
+def format_percentage_column(sheet, header_name, format, header_row="A"):
+    """
+    Formats the column with the given header name as a three-digit percentage in an Excel sheet.
+    
+    Args:
+        sheet (xlwings.Sheet): The Excel sheet object.
+        header_name (str): The column header to search for.
+    
+    Returns:
+        None
+    """
+    # Find the column index based on the header
+    headers = sheet.range(f"{header_row}1").expand("right").value  # Read all headers in row 1
+    if header_name not in headers:
+        raise ValueError(f"Header '{header_name}' not found in the sheet.")
+    col_index = headers.index(header_name) + 1  # Convert to Excel 1-based index
+    col_letter = xw.utils.col_name(col_index)  # Convert to letter (e.g., B, C)
+    # Apply percentage format with three-digit display (e.g., 100%, 045%, 008%)
+    sheet.range(f"{col_letter}2:{col_letter}1048576").number_format = format
