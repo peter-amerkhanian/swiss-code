@@ -8,8 +8,6 @@ from datetime import datetime
 from typing import Tuple, Union
 from collections.abc import Iterable
 
-plt.style.use('default')
-
 def custom_legend(ax: matplotlib.axes.Axes,
                   outside_loc: str = None,
                   order: Union[str, list] = "default",
