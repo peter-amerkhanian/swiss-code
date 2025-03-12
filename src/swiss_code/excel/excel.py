@@ -5,8 +5,7 @@ import pandas as pd
 import numpy as np
 
 
-
-def get_or_create_workbook(filename="output.xlsx",
+def get_or_create_workbook(filename: str,
                            display_alerts: bool = False,
                            screen_updating: bool= False):
     """
@@ -30,6 +29,65 @@ def get_or_create_workbook(filename="output.xlsx",
         wb.save(filename)
     return wb
 
+def select_sheet(name: str, wb: xw.Book):
+    """
+    Selects an existing sheet by name or creates a new one if it does not exist.
+
+    Args:
+        name (str): The name of the sheet to select or create.
+        wb (xlwings.Book): The Excel workbook object.
+
+    Returns:
+        xlwings.Sheet: The selected or newly created sheet."
+    """
+    try:
+        sheet_new = wb.sheets.add(name) 
+    except ValueError:
+        sheet_new = wb.sheets[name]
+    return sheet_new
+
+def get_data_bounds(sheet):
+    start_col = string.ascii_uppercase[sheet.used_range[0].column - 1]
+    end_col = string.ascii_uppercase[sheet.used_range[-1].column - 1]
+    start_row = sheet.used_range[0].row
+    end_row = sheet.used_range[-1].row
+    return {
+        'start_col': start_col,
+        'end_col': end_col,
+        'start_row': start_row,
+        'end_row': end_row
+        }
+
+
+def bold_indices(df, sheet):
+    # Get the range for the index
+    index_start_row = 1  # Start from row 2 (since the header is in row 1)
+    index_end_row = index_start_row + df.shape[0]
+    # Get the range for the headers
+    header_start_col = 1  # Start from column B (the first column is the index)
+    header_end_col = header_start_col + df.reset_index().shape[1] - 1  # Adjust for headers
+
+    # For multi-index columns, we need to get the full range
+    if isinstance(df.index, pd.MultiIndex):
+        for i in range(df.index.nlevels):
+            # Define the range for each level of the multi-index
+            level_range = sheet.range(f"{string.ascii_uppercase[i]}{index_start_row}:{string.ascii_uppercase[i]}{index_end_row}")
+            level_range.font.bold = True
+            index_end_row = index_start_row + df.shape[0] + 1
+    else:
+        index_range = sheet.range(f"A{index_start_row}:A{index_end_row}")
+        index_range.font.bold = True
+    if isinstance(df.columns, pd.MultiIndex):
+        for i in range(df.columns.nlevels):
+            # Define the range for each level of the multi-index
+            level_range = sheet.range(f"B{i+1}:{string.ascii_uppercase[header_end_col]}{i+1}")
+            level_range.font.bold = True
+    else:
+        # If it's a single index, bold the header range directly
+        header_range = sheet.range(f"B1:{string.ascii_uppercase[header_end_col - 1]}1")
+        header_range.font.bold = True
+
+
 def write_df_to_excel(df: pd.DataFrame,
                       sheet: xw.Sheet,
                       cell_start: str="A1",
@@ -43,34 +101,9 @@ def write_df_to_excel(df: pd.DataFrame,
     """
     # Write the DataFrame to the Excel sheet starting from cell A1
     sheet.range(cell_start).options(index=True, header=True).value = df
-    
     if bold_indexes:
-        # Get the range for the index
-        index_start_row = 1  # Start from row 2 (since the header is in row 1)
-        index_end_row = index_start_row + df.shape[0] + 1
-        # Get the range for the headers
-        header_start_col = 2  # Start from column B (the first column is the index)
-        header_end_col = header_start_col + df.reset_index().shape[1] - 1  # Adjust for headers
-
-        # For multi-index columns, we need to get the full range
-        if isinstance(df.index, pd.MultiIndex):
-            for i in range(df.index.nlevels):
-                # Define the range for each level of the multi-index
-                level_range = sheet.range(f"{string.ascii_uppercase[i]}{index_start_row}:{string.ascii_uppercase[i]}{index_end_row}")
-                level_range.font.bold = True
-                index_end_row = index_start_row + df.shape[0] + 1
-        else:
-            index_range = sheet.range(f"A{index_start_row}:A{index_end_row}")
-            index_range.font.bold = True
-        if isinstance(df.columns, pd.MultiIndex):
-            for i in range(df.columns.nlevels):
-                # Define the range for each level of the multi-index
-                level_range = sheet.range(f"B{i+1}:{string.ascii_uppercase[header_end_col]}{i+1}")
-                level_range.font.bold = True
-        else:
-            # If it's a single index, bold the header range directly
-            header_range = sheet.range(f"B1:{string.ascii_uppercase[header_end_col - 1]}1")
-            header_range.font.bold = True
+        bold_indices(df, sheet)
+        
 
 
 def autofit_all_sheets(wb: xw.Book):
@@ -93,37 +126,6 @@ def close_out_book(wb: xw.Book, autofit: bool=True):
         wb.sheets["Sheet1"].delete()
     wb.save()
     wb.close()
-
-
-
-def format_percentage_column(sheet, header_name, format, row="A"):
-    """
-    Formats the column with the given header name as a three-digit percentage in an Excel sheet.
-    
-    Args:
-        sheet (xlwings.Sheet): The Excel sheet object.
-        header_name (str): The column header to search for.
-    
-    Returns:
-        None
-    """
-    # Find the column index based on the header
-    headers = sheet.range(f"{row}1").expand("right").value  # Read all headers in row 1
-    if header_name not in headers:
-        raise ValueError(f"Header '{header_name}' not found in the sheet.")
-    
-    col_index = headers.index(header_name) + 1  # Convert to Excel 1-based index
-    col_letter = xw.utils.col_name(col_index)  # Convert to letter (e.g., B, C)
-    
-    # Apply percentage format with three-digit display (e.g., 100%, 045%, 008%)
-    sheet.range(f"{col_letter}2:{col_letter}1048576").number_format = format
-
-def select_sheet(name, wb):
-    try:
-        sheet_new = wb.sheets.add(name) 
-    except ValueError:
-        sheet_new = wb.sheets[name]
-    return sheet_new
 
 def merge_row(sheet, row=1):
     """
@@ -210,3 +212,33 @@ def format_percentage_column(sheet, header_name, format, header_row="A"):
     col_letter = xw.utils.col_name(col_index)  # Convert to letter (e.g., B, C)
     # Apply percentage format with three-digit display (e.g., 100%, 045%, 008%)
     sheet.range(f"{col_letter}2:{col_letter}1048576").number_format = format
+
+
+def format_dollar_column(sheet, header_name, format="$#,##0.00", header_row="A"):
+    """
+    Formats the column with the given header name as a dollar amount in an Excel sheet.
+
+    Args:
+        sheet (xlwings.Sheet): The Excel sheet object.
+        header_name (str): The column header to search for.
+        format (str, optional): The Excel number format for currency. Default is "$#,##0.00".
+        header_row (str, optional): The row letter where headers are located. Default is "A".
+
+    Returns:
+        None
+    """
+    # Find the column index based on the header
+    headers = sheet.range(f"{header_row}1").expand("right").value  # Read all headers in row 1
+    if header_name not in headers:
+        raise ValueError(f"Header '{header_name}' not found in the sheet.")
+    
+    col_index = headers.index(header_name) + 1  # Convert to Excel 1-based index
+    col_letter = xw.utils.col_name(col_index)  # Convert to letter (e.g., B, C)
+    
+    # Apply dollar format (e.g., $1,234.56)
+    sheet.range(f"{col_letter}2:{col_letter}1048576").number_format = format
+
+def make_borders(sheet, linestyle=1, weight=2):
+    used_range = sheet.used_range
+    used_range.api.Borders.LineStyle = linestyle
+    used_range.api.Borders.Weight = weight

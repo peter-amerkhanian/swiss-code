@@ -4,14 +4,11 @@ import numpy as np
 from shapely.geometry import Point
 
 def simulate_df(num_transactions=100):
-    # Generate random transaction data
     customer_ids = np.random.randint(1000, 5000, num_transactions)
     transaction_amounts = np.round(np.random.uniform(5, 500, num_transactions), 2)
     payment_methods = np.random.choice(["Credit Card", "Debit Card", "PayPal", "Cash"], num_transactions)
     categories = np.random.choice(["Electronics", "Clothing", "Groceries", "Entertainment"], num_transactions)
     transaction_dates = pd.date_range(start="2024-01-01", periods=num_transactions, freq="D")
-
-    # Create a DataFrame
     data = {
         "transaction_id": range(1, num_transactions + 1),
         "customer_id": customer_ids,
