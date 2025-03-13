@@ -1,0 +1,26 @@
+[project]
+name = "swiss-code"
+version = "0.1.1"
+description = "Python data science utilities"
+authors = [
+    {name = "Peter Amerkhanian",email = "peteamer@gmail.com"}
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "contextily (>=1.6.2,<2.0.0)",
+    "geopandas (>=1.0.1,<2.0.0)",
+    "scipy (>=1.15.1,<2.0.0)",
+    "matplotlib (>=3.10.0,<4.0.0)",
+    "pandas (>=2.2.3,<3.0.0)",
+    "ipykernel (>=6.29.5,<7.0.0)",
+    "ipython (>=8.32.0,<9.0.0)",
+    "seaborn (>=0.13.2,<0.14.0)",
+    "xlwings (>=0.33.11,<0.34.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
