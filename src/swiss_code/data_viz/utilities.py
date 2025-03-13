@@ -8,8 +8,6 @@ from datetime import datetime
 from typing import Tuple, Union
 from collections.abc import Iterable
 
-plt.style.use('default')
-
 def custom_legend(ax: matplotlib.axes.Axes,
                   outside_loc: str = None,
                   order: Union[str, list] = "default",
@@ -157,3 +155,9 @@ def dollar_formatter(x: float, pos) -> str:
 #     """
 #     return f"{x:,.0f}"
 
+
+def percent_formatter(x: float, pos) -> str:
+    """
+    Helper Function for Matplotlib number formatting
+    """
+    return f"{x*100:.1f}%"
