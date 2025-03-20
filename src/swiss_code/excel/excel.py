@@ -114,54 +114,43 @@ class ExcelDataFrame:
         """
         self.range.api.Borders.LineStyle = linestyle
         self.range.api.Borders.Weight = weight
-    
-    def merge_row(self, row=1):
-        """
-        Merges adjacent cells in the specified row if they have the same value.
 
-        Args:
-            row (int): The row number (1-based) to check for merging. Default is the first row.
-        """
-        last_col = self.sheet.range(row, self.sheet.cells.last_cell.column).end("left").column
-        prev_value, merge_start = None, None
-
-        for col in range(1, last_col + 1):
-            cell_value = self.sheet.cells(row, col).value
-
-            if cell_value == prev_value:
-                continue
-            else:
-                if prev_value is not None and merge_start is not None and col - merge_start > 1:
-                    self.sheet.range((row, merge_start), (row, col - 1)).api.Merge()
-                prev_value = cell_value
-                merge_start = col
-
-        if prev_value is not None and merge_start is not None and last_col - merge_start > 0:
-            self.sheet.range((row, merge_start), (row, last_col)).api.Merge()
-
-    def merge_column(self, col=1):
+    def merge_axis(self, index=1, axis=1):
         """
         Merges adjacent cells in the specified column if they have the same value.
 
         Args:
             col (int): The column number (1-based) to check for merging. Default is the first column.
         """
-        last_row = self.sheet.range(self.sheet.cells.last_cell.row, col).end("up").row
+        if axis == 1:
+            last_cell = self.range.last_cell.row
+        elif axis == 0:
+            last_cell = self.range.last_cell.column
+        else:
+            raise ValueError
+        
         prev_value, merge_start = None, None
-
-        for row in range(1, last_row + 1):
-            cell_value = self.sheet.cells(row, col).value
-
+        for free_cell in range(1, last_cell + 1):
+            if axis == 1:
+                cell_value = self.sheet.cells(free_cell, index).value
+            else:
+                cell_value = self.sheet.cells(index, free_cell).value
             if cell_value == prev_value:
                 continue
             else:
-                if prev_value is not None and merge_start is not None and row - merge_start > 1:
-                    self.sheet.range((merge_start, col), (row - 1, col)).api.Merge()
+                if prev_value is not None and merge_start is not None and free_cell - merge_start > 1:
+                    if axis == 1:
+                        self.sheet.range((merge_start, index), (free_cell - 1, index)).api.Merge()
+                    else:
+                        self.sheet.range((index, merge_start), (index, free_cell - 1)).api.Merge()
                 prev_value = cell_value
-                merge_start = row
+                merge_start = free_cell
 
-        if prev_value is not None and merge_start is not None and last_row - merge_start > 0:
-            self.sheet.range((merge_start, col), (last_row, col)).api.Merge()
+        if prev_value is not None and merge_start is not None and last_cell - merge_start > 0:
+            if axis == 1:
+                self.sheet.range((merge_start, index), (last_cell, index)).api.Merge()
+            else:
+                self.sheet.range((index, merge_start), (index, last_cell)).api.Merge()
 
     def number_format_column(self, header_name: str, format:str ="$#,###.00"):
         """
@@ -292,74 +281,3 @@ def close_out_book(wb: xw.Book, autofit: bool=True):
         wb.sheets["Sheet1"].delete()
     wb.save()
     wb.app.quit()
-
-def merge_row(sheet, row=1):
-    """
-    Merges adjacent cells in the specified row if they have the same value.
-
-    Args:
-        sheet (xlwings.Sheet): The Excel sheet where merging should occur.
-        row (int): The row number (1-based) to check for merging. Default is the first row.
-    """
-    # Find the last used column in the specified row
-    last_col = sheet.range(row, sheet.cells.last_cell.column).end("left").column
-    
-    prev_value, merge_start = None, None
-
-    for col in range(1, last_col + 1):  # Iterate over all columns
-        cell_value = sheet.cells(row, col).value
-
-        if cell_value == prev_value:
-            # Continue merging range
-            continue
-        else:
-            # Merge previous range if applicable
-            if prev_value is not None and merge_start is not None and col - merge_start > 1:
-                sheet.range((row, merge_start), (row, col - 1)).api.Merge()
-
-            # Start new merge group
-            prev_value = cell_value
-            merge_start = col
-
-    # Merge last group (if applicable)
-    if prev_value is not None and merge_start is not None and last_col - merge_start > 0:
-        sheet.range((row, merge_start), (row, last_col)).api.Merge()
-
-
-def merge_column(sheet, col=1):
-    """
-    Merges adjacent cells in the specified column if they have the same value.
-
-    Args:
-        sheet (xlwings.Sheet): The Excel sheet where merging should occur.
-        col (int): The column number (1-based) to check for merging. Default is the first column.
-    """
-    # Find the last used row in the specified column
-    last_row = sheet.range(sheet.cells.last_cell.row, col).end("up").row
-
-    prev_value, merge_start = None, None
-
-    for row in range(1, last_row + 1):  # Iterate over all rows
-        cell_value = sheet.cells(row, col).value
-
-        if cell_value == prev_value:
-            # Continue merging range
-            continue
-        else:
-            # Merge previous range if applicable
-            if prev_value is not None and merge_start is not None and row - merge_start > 1:
-                sheet.range((merge_start, col), (row - 1, col)).api.Merge()
-
-            # Start new merge group
-            prev_value = cell_value
-            merge_start = row
-
-    # Merge last group (if applicable)
-    if prev_value is not None and merge_start is not None and last_row - merge_start > 0:
-        sheet.range((merge_start, col), (last_row, col)).api.Merge()
-
-
-
-def make_borders(data_range, linestyle=1, weight=2):
-    data_range.api.Borders.LineStyle = linestyle
-    data_range.api.Borders.Weight = weight
