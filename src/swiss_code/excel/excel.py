@@ -161,11 +161,17 @@ class ExcelDataFrame:
             header_name (str): The column header to search for.
             format (str, optional): The Excel number format. Default is "$#,###.00".
         """
-        headers = self.range[0].expand("right").value
-        if header_name not in headers:
-            raise ValueError(f"Header '{header_name}' not found in the sheet.")
-        
-        col_index = headers.index(header_name) + 1
+        if isinstance(self.df.columns, pd.MultiIndex):
+            for ind, col in enumerate(self.df.columns):
+                if col == header_name:
+                    col_index = self.df.index.nlevels + ind + 1
+                    break
+        else:
+            headers = self.range[0].expand("right").value
+            if header_name not in headers:
+                raise ValueError(f"Header '{header_name}' not found in the sheet.")
+            
+            col_index = headers.index(header_name) + 1
         col_letter = xw.utils.col_name(col_index)
         
         data_start = self.df.columns.nlevels + 1
@@ -175,10 +181,16 @@ class ExcelDataFrame:
         ).number_format = format
 
     def format_column(self, col_name, bold=False, color=None):
-        headers = self.range[0].expand('right').value
-        if col_name not in headers:
-            raise ValueError(f"Header '{col_name}' not found in the sheet.")
-        col_index = headers.index(col_name) + 1
+        if isinstance(self.df.columns, pd.MultiIndex):
+            for ind, col in enumerate(self.df.columns):
+                if col == col_name:
+                    col_index = self.df.index.nlevels + ind + 1
+                    break
+        else:
+            headers = self.range[0].expand('right').value
+            if col_name not in headers:
+                raise ValueError(f"Header '{col_name}' not found in the sheet.")
+            col_index = headers.index(col_name) + 1
         col_letter = xw.utils.col_name(col_index)
         data_col_range = self.sheet.range(f"{col_letter}{self.index_start_row}:{col_letter}{self.index_end_row}")
         if not bold == "ignore":
@@ -187,10 +199,16 @@ class ExcelDataFrame:
             data_col_range.color = excel_colors.get(color)
 
     def format_row(self, row_name, bold=False, color=None):
-        index = self.range[0].expand('down').value
-        if row_name not in index:
-            raise ValueError(f"Row '{row_name}' not found in the sheet.")
-        data_row_ind = index.index(row_name) + 1
+        if isinstance(self.df.index, pd.MultiIndex):
+            for ind, indexer in enumerate(self.df.index):
+                if indexer == row_name:
+                    data_row_ind = self.df.columns.nlevels + ind + 1
+                    break
+        else:
+            index = self.range[0].expand('down').value
+            if row_name not in index:
+                raise ValueError(f"Row '{row_name}' not found in the sheet.")
+            data_row_ind = index.index(row_name) + 1
         data_row_range = self.sheet.range(f"{self.header_start_col}{data_row_ind}:{self.header_end_col}{data_row_ind}")
         if not bold == "ignore":
             data_row_range.font.bold = bold
