@@ -4,7 +4,7 @@ In my day job I've recently been working on visualizing time series data with `m
 
 This has led me to a new project -- I'm creating a personal data science utilities library with modules for `matplotlib`/`seaborn`, `pandas`, `geopandas`, and `scikit-learn`, each containing functions that do all the random things I've repeatedly built custom code solutions for in the past. The hope is that I don't need to keep re-learning the same things and can call simple wrapper functions that I've written.
 
-## Instal
+## Install
 
 ```
 pip install git+https://github.com/peter-amerkhanian/swiss-code.git
