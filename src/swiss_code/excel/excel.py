@@ -336,7 +336,7 @@ def write_df_to_excel(
     end_col = df_range[1] - 1
     end_row = df_range[0]
     return ExcelDataFrame(
-        df, sheet, xw.Range(f"{cell_start}:{string.ascii_uppercase[end_col]}{end_row}")
+        df, sheet, sheet.range(f"{cell_start}:{string.ascii_uppercase[end_col]}{end_row}")
     )
 
 
