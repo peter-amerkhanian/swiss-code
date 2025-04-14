@@ -3,13 +3,14 @@ import xlwings as xw
 import string
 import pandas as pd
 import numpy as np
+import pywintypes
+from typing import Optional
 
-
-def get_or_create_workbook(filename: str,
-                           display_alerts: bool = False,
-                           screen_updating: bool= False):
+def get_or_create_workbook(
+    filename: str, display_alerts: bool = False, screen_updating: bool = False
+) -> xw.Book:
     """
-    Checks if the specified Excel file exists. If it does, opens it; 
+    Checks if the specified Excel file exists. If it does, opens it;
     otherwise, creates a new one. Returns the workbook object.
 
     Args:
@@ -29,7 +30,8 @@ def get_or_create_workbook(filename: str,
         wb.save(filename)
     return wb
 
-def select_sheet(name: str, wb: xw.Book):
+
+def select_sheet(name: str, wb: xw.Book) -> xw.Sheet:
     """
     Selects an existing sheet by name or creates a new one if it does not exist.
 
@@ -41,10 +43,11 @@ def select_sheet(name: str, wb: xw.Book):
         xlwings.Sheet: The selected or newly created sheet."
     """
     try:
-        sheet_new = wb.sheets.add(name) 
+        sheet_new = wb.sheets.add(name)
     except ValueError:
         sheet_new = wb.sheets[name]
     return sheet_new
+
 
 def get_data_bounds(sheet):
     start_col = string.ascii_uppercase[sheet.used_range[0].column - 1]
@@ -52,193 +55,308 @@ def get_data_bounds(sheet):
     start_row = sheet.used_range[0].row
     end_row = sheet.used_range[-1].row
     return {
-        'start_col': start_col,
-        'end_col': end_col,
-        'start_row': start_row,
-        'end_row': end_row
-        }
+        "start_col": start_col,
+        "end_col": end_col,
+        "start_row": start_row,
+        "end_row": end_row,
+    }
 
 
-def bold_indices(df, sheet):
-    # Get the range for the index
-    index_start_row = 1  # Start from row 2 (since the header is in row 1)
-    index_end_row = index_start_row + df.shape[0]
-    # Get the range for the headers
-    header_start_col = 1  # Start from column B (the first column is the index)
-    header_end_col = header_start_col + df.reset_index().shape[1] - 1  # Adjust for headers
+excel_colors = {
+    "black": (0, 0, 0),
+    "white": (255, 255, 255),
+    "red": (255, 0, 0),
+    "dark_red": (192, 0, 0),
+    "blue": (0, 0, 255),
+    "dark_blue": (0, 0, 128),
+    "green": (0, 255, 0),
+    "dark_green": (0, 128, 0),
+    "yellow": (255, 255, 0),
+    "orange": (255, 165, 0),
+    "purple": (128, 0, 128),
+    "grey": (128, 128, 128),
+    "light_grey": (217, 217, 217),  # Default Excel light grey
+    "dark_grey": (64, 64, 64),
+    "light_blue": (221, 235, 247),
+    "light_green": (198, 224, 180),
+    "light_yellow": (255, 242, 204),
+    "light_orange": (255, 229, 153),
+    "light_purple": (204, 192, 218),
+    "light_red": (252, 228, 214),
+    "teal": (0, 128, 128),
+    "gold": (255, 192, 0),
+    "cyan": (0, 255, 255),
+    "magenta": (255, 0, 255),
+}
 
-    # For multi-index columns, we need to get the full range
-    if isinstance(df.index, pd.MultiIndex):
-        for i in range(df.index.nlevels):
-            # Define the range for each level of the multi-index
-            level_range = sheet.range(f"{string.ascii_uppercase[i]}{index_start_row}:{string.ascii_uppercase[i]}{index_end_row}")
-            level_range.font.bold = True
-            index_end_row = index_start_row + df.shape[0] + 1
-    else:
-        index_range = sheet.range(f"A{index_start_row}:A{index_end_row}")
-        index_range.font.bold = True
-    if isinstance(df.columns, pd.MultiIndex):
-        for i in range(df.columns.nlevels):
-            # Define the range for each level of the multi-index
-            level_range = sheet.range(f"B{i+1}:{string.ascii_uppercase[header_end_col]}{i+1}")
-            level_range.font.bold = True
-    else:
-        # If it's a single index, bold the header range directly
-        header_range = sheet.range(f"B1:{string.ascii_uppercase[header_end_col - 1]}1")
-        header_range.font.bold = True
+excel_h_align = {
+    "Center": -4108,
+    "Center across selection": 7,
+    "Distribute": -4117,
+    "Fill": 5,
+    "Align according to data type": 1,
+    "Justify": -4130,
+    "Left": -4131,
+    "Right": -4152,
+}
+
+excel_v_align = {
+    "Bottom": -4107,
+    "Center": -4108,
+    "Distributed": -4117,
+    "Justify": -4130,
+    "Top": -4160,
+}
 
 
-def write_df_to_excel(df: pd.DataFrame,
-                      sheet: xw.Sheet,
-                      cell_start: str="A1",
-                      bold_indexes: bool=True):
+class ExcelDataFrame:
+    def __init__(self, df: pd.DataFrame, sheet: xw.Sheet, range: xw.Range):
+        """
+        Initializes an ExcelDataFrame object.
+
+        :param df: Pandas DataFrame containing the data
+        :param sheet: xlwings Sheet object where data will be stored
+        :param range_: xlwings Range object representing where the data is placed
+        """
+        self.df = df
+        self.sheet = sheet
+        self.range = range
+        self.index_start_row = range[0].row
+        self.index_end_row = range[-1].row
+        self.header_start_col = range[0].address.split("$")[1]
+        self.header_end_col = range[-1].address.split("$")[1]
+
+    def make_borders(self, linestyle=1, weight=2):
+        """
+        Applies borders to a given range in the Excel sheet.
+
+        Args:
+            data_range (xlwings.Range): The range to apply borders to.
+            linestyle (int, optional): Line style for borders. Default is 1.
+            weight (int, optional): Border weight. Default is 2.
+        """
+        self.range.api.Borders.LineStyle = linestyle
+        self.range.api.Borders.Weight = weight
+
+    def merge_axis(self, index=1, axis=1):
+        """
+        Merges adjacent cells in the specified column if they have the same value.
+
+        Args:
+            col (int): The column number (1-based) to check for merging. Default is the first column.
+        """
+        if axis == 1:
+            last_cell = self.range.last_cell.row
+        elif axis == 0:
+            last_cell = self.range.last_cell.column
+        else:
+            raise ValueError
+
+        prev_value, merge_start = None, None
+        for free_cell in range(1, last_cell + 1):
+            if axis == 1:
+                cell_value = self.sheet.cells(free_cell, index).value
+            else:
+                cell_value = self.sheet.cells(index, free_cell).value
+            if cell_value == prev_value:
+                continue
+            else:
+                if (
+                    prev_value is not None
+                    and merge_start is not None
+                    and free_cell - merge_start > 1
+                ):
+                    if axis == 1:
+                        self.sheet.range(
+                            (merge_start, index), (free_cell - 1, index)
+                        ).api.Merge()
+                    else:
+                        self.sheet.range(
+                            (index, merge_start), (index, free_cell - 1)
+                        ).api.Merge()
+                prev_value = cell_value
+                merge_start = free_cell
+
+        if (
+            prev_value is not None
+            and merge_start is not None
+            and last_cell - merge_start > 0
+        ):
+            if axis == 1:
+                self.sheet.range((merge_start, index), (last_cell, index)).api.Merge()
+            else:
+                self.sheet.range((index, merge_start), (index, last_cell)).api.Merge()
+
+    def format_column_data(self, header_name: str, format: str = "$#,###.00"):
+        """
+        Formats the column with the given header name as a dollar amount in an Excel sheet.
+
+        Args:
+            df_range (dict): Dictionary containing DataFrame and range information.
+            header_name (str): The column header to search for.
+            format (str, optional): The Excel number format. Default is "$#,###.00".
+        """
+        if isinstance(self.df.columns, pd.MultiIndex):
+            for ind, col in enumerate(self.df.columns):
+                if col == header_name:
+                    col_index = self.df.index.nlevels + ind + 1
+                    break
+        else:
+            headers = self.range[0].expand("right").value
+            if header_name not in headers:
+                raise ValueError(f"Header '{header_name}' not found in the sheet.")
+
+            col_index = headers.index(header_name) + 1
+        col_letter = xw.utils.col_name(col_index)
+
+        data_start = self.df.columns.nlevels + 1
+        data_end = data_start + self.df.shape[0] - 1
+        self.sheet.range(
+            f"{col_letter}{data_start}:{col_letter}{data_end}"
+        ).number_format = format
+
+    def _format_range(
+        self,
+        data_range: xw.Range,
+        bold: bool = False,
+        color: Optional[str] = None,
+        h_align: Optional[str] = None,
+        v_align: Optional[str] = None,
+    ) -> None:
+        """
+        Applies formatting to a given range in Excel.
+
+        Args:
+            data_range (xw.Range): The range to format.
+            bold (bool, optional): Whether to bold the text.
+            color (Optional[str], optional): The fill color (from excel_colors dictionary).
+            h_align (Optional[str], optional): Horizontal alignment (from excel_h_align dictionary).
+            v_align (Optional[str], optional): Vertical alignment (from excel_v_align dictionary).
+        """
+        if bold != "ignore":
+            data_range.font.bold = bold
+        if color != "ignore":
+            data_range.color = excel_colors.get(color)
+        if h_align != "ignore":
+            data_range.api.HorizontalAlignment = excel_h_align.get(h_align)
+        if v_align != "ignore":
+            data_range.api.VerticalAlignment = excel_v_align.get(v_align)
+
+    def format_column(
+        self, col_name, bold=False, color=None, h_align=None, v_align=None
+    ):
+        if isinstance(self.df.columns, pd.MultiIndex):
+            for ind, col in enumerate(self.df.columns):
+                if col == col_name:
+                    col_index = self.df.index.nlevels + ind + 1
+                    break
+        else:
+            headers = self.range[0].expand("right").value
+            if col_name not in headers:
+                raise ValueError(f"Header '{col_name}' not found in the sheet.")
+            col_index = headers.index(col_name) + 1
+        col_letter = xw.utils.col_name(col_index)
+        data_col_range = self.sheet.range(
+            f"{col_letter}{self.index_start_row}:{col_letter}{self.index_end_row}"
+        )
+        self._format_range(data_col_range, bold, color, h_align, v_align)
+
+    def format_row(self, row_name, bold=False, color=None, h_align=None, v_align=None):
+        if isinstance(self.df.index, pd.MultiIndex):
+            for ind, indexer in enumerate(self.df.index):
+                if indexer == row_name:
+                    data_row_ind = self.df.columns.nlevels + ind + 1
+                    break
+        else:
+            index = self.range[0].expand("down").value
+            if row_name not in index:
+                raise ValueError(f"Row '{row_name}' not found in the sheet.")
+            data_row_ind = index.index(row_name) + 1
+        data_row_range = self.sheet.range(
+            f"{self.header_start_col}{data_row_ind}:{self.header_end_col}{data_row_ind}"
+        )
+        self._format_range(data_row_range, bold, color, h_align, v_align)
+
+    def format_indices(self, bold=False, color=None, h_align=None, v_align=None):
+        """
+        Bolds index and column headers in an Excel sheet.
+        """
+        if isinstance(self.df.index, pd.MultiIndex):
+            for i in range(self.df.index.nlevels):
+                level_range = self.sheet.range(
+                    f"{string.ascii_uppercase[i]}{self.index_start_row}:{string.ascii_uppercase[i]}{self.index_end_row}"
+                )
+                self._format_range(level_range, bold, color, h_align, v_align)
+        else:
+            index_range = self.sheet.range(
+                f"{self.header_start_col}{self.index_start_row}:{self.header_start_col}{self.index_end_row}"
+            )
+            self._format_range(index_range, bold, color, h_align, v_align)
+
+        if isinstance(self.df.columns, pd.MultiIndex):
+            for i in range(self.df.columns.nlevels):
+                level_range = self.sheet.range(
+                    f"{self.header_start_col}{i+1}:{self.header_end_col}{i+1}"
+                )
+                self._format_range(level_range, bold, color, h_align, v_align)
+        else:
+            header_range = self.sheet.range(
+                f"{self.header_start_col}{self.index_start_row}:{self.header_end_col}{self.index_start_row}"
+            )
+            self._format_range(header_range, bold, color, h_align, v_align)
+
+    def __repr__(self):
+        try:
+            return f"ACTIVE ExcelDataFrame(sheet={self.sheet.name}, range={self.range.address}, df_shape={self.df.shape})"
+        except pywintypes.com_error:
+            return f" DISCONNECTED ExcelDataFrame(sheet=NA, range=NA, df_shape={self.df.shape})"
+
+
+def get_df_range(df: pd.DataFrame) -> tuple[int, int]:
+    base_shape: np.ndarray = np.array(df.shape, dtype=int)
+    columns: int = df.columns.nlevels
+    indices: int = df.index.nlevels
+    shape = base_shape + np.array([columns, indices])
+    return shape
+
+
+def write_df_to_excel(
+    df: pd.DataFrame, sheet: xw.Sheet, cell_start: str = "A1"
+) -> ExcelDataFrame:
     """
     Writes a pandas DataFrame to an Excel sheet and bolds the index and column headers.
-    
+
     Args:
         df (pd.DataFrame): The DataFrame to write.
         sheet (xlwings.Sheet): The Excel sheet where the DataFrame will be written.
     """
     # Write the DataFrame to the Excel sheet starting from cell A1
     sheet.range(cell_start).options(index=True, header=True).value = df
-    if bold_indexes:
-        bold_indices(df, sheet)
-        
+    df_range = get_df_range(df)
+    end_col = df_range[1] - 1
+    end_row = df_range[0]
+    return ExcelDataFrame(
+        df, sheet, sheet.range(f"{cell_start}:{string.ascii_uppercase[end_col]}{end_row}")
+    )
 
 
 def autofit_all_sheets(wb: xw.Book):
     """
     Autofits all columns in all sheets of the given workbook.
-    
+
     Args:
         wb (xlwings.Book): The Excel workbook object.
     """
     for sheet in wb.sheets:
         if sheet.used_range.columns.count > 1:  # Ensure there's data in the sheet
             sheet.used_range.api.EntireColumn.AutoFit()  # Autofit columns
-            sheet.used_range.api.EntireRow.AutoFit()     # Autofit rows
+            sheet.used_range.api.EntireRow.AutoFit()  # Autofit rows
 
 
-def close_out_book(wb: xw.Book, autofit: bool=True):
+def close_out_book(wb: xw.Book, autofit: bool = True):
     if autofit:
         autofit_all_sheets(wb)
     if "Sheet1" in [sheet.name for sheet in wb.sheets]:
         wb.sheets["Sheet1"].delete()
     wb.save()
-    wb.close()
-
-def merge_row(sheet, row=1):
-    """
-    Merges adjacent cells in the specified row if they have the same value.
-
-    Args:
-        sheet (xlwings.Sheet): The Excel sheet where merging should occur.
-        row (int): The row number (1-based) to check for merging. Default is the first row.
-    """
-    # Find the last used column in the specified row
-    last_col = sheet.range(row, sheet.cells.last_cell.column).end("left").column
-    
-    prev_value, merge_start = None, None
-
-    for col in range(1, last_col + 1):  # Iterate over all columns
-        cell_value = sheet.cells(row, col).value
-
-        if cell_value == prev_value:
-            # Continue merging range
-            continue
-        else:
-            # Merge previous range if applicable
-            if prev_value is not None and merge_start is not None and col - merge_start > 1:
-                sheet.range((row, merge_start), (row, col - 1)).api.Merge()
-
-            # Start new merge group
-            prev_value = cell_value
-            merge_start = col
-
-    # Merge last group (if applicable)
-    if prev_value is not None and merge_start is not None and last_col - merge_start > 0:
-        sheet.range((row, merge_start), (row, last_col)).api.Merge()
-
-
-def merge_column(sheet, col=1):
-    """
-    Merges adjacent cells in the specified column if they have the same value.
-
-    Args:
-        sheet (xlwings.Sheet): The Excel sheet where merging should occur.
-        col (int): The column number (1-based) to check for merging. Default is the first column.
-    """
-    # Find the last used row in the specified column
-    last_row = sheet.range(sheet.cells.last_cell.row, col).end("up").row
-
-    prev_value, merge_start = None, None
-
-    for row in range(1, last_row + 1):  # Iterate over all rows
-        cell_value = sheet.cells(row, col).value
-
-        if cell_value == prev_value:
-            # Continue merging range
-            continue
-        else:
-            # Merge previous range if applicable
-            if prev_value is not None and merge_start is not None and row - merge_start > 1:
-                sheet.range((merge_start, col), (row - 1, col)).api.Merge()
-
-            # Start new merge group
-            prev_value = cell_value
-            merge_start = row
-
-    # Merge last group (if applicable)
-    if prev_value is not None and merge_start is not None and last_row - merge_start > 0:
-        sheet.range((merge_start, col), (last_row, col)).api.Merge()
-
-
-def format_percentage_column(sheet, header_name, format, header_row="A"):
-    """
-    Formats the column with the given header name as a three-digit percentage in an Excel sheet.
-    
-    Args:
-        sheet (xlwings.Sheet): The Excel sheet object.
-        header_name (str): The column header to search for.
-    
-    Returns:
-        None
-    """
-    # Find the column index based on the header
-    headers = sheet.range(f"{header_row}1").expand("right").value  # Read all headers in row 1
-    if header_name not in headers:
-        raise ValueError(f"Header '{header_name}' not found in the sheet.")
-    col_index = headers.index(header_name) + 1  # Convert to Excel 1-based index
-    col_letter = xw.utils.col_name(col_index)  # Convert to letter (e.g., B, C)
-    # Apply percentage format with three-digit display (e.g., 100%, 045%, 008%)
-    sheet.range(f"{col_letter}2:{col_letter}1048576").number_format = format
-
-
-def format_dollar_column(sheet, header_name, format="$#,##0.00", header_row="A"):
-    """
-    Formats the column with the given header name as a dollar amount in an Excel sheet.
-
-    Args:
-        sheet (xlwings.Sheet): The Excel sheet object.
-        header_name (str): The column header to search for.
-        format (str, optional): The Excel number format for currency. Default is "$#,##0.00".
-        header_row (str, optional): The row letter where headers are located. Default is "A".
-
-    Returns:
-        None
-    """
-    # Find the column index based on the header
-    headers = sheet.range(f"{header_row}1").expand("right").value  # Read all headers in row 1
-    if header_name not in headers:
-        raise ValueError(f"Header '{header_name}' not found in the sheet.")
-    
-    col_index = headers.index(header_name) + 1  # Convert to Excel 1-based index
-    col_letter = xw.utils.col_name(col_index)  # Convert to letter (e.g., B, C)
-    
-    # Apply dollar format (e.g., $1,234.56)
-    sheet.range(f"{col_letter}2:{col_letter}1048576").number_format = format
-
-def make_borders(sheet, linestyle=1, weight=2):
-    used_range = sheet.used_range
-    used_range.api.Borders.LineStyle = linestyle
-    used_range.api.Borders.Weight = weight
+    wb.app.quit()
